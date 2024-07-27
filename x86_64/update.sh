@@ -5,7 +5,9 @@ rm axos.file*
 
 echo "repo-add"
 repo-add -n -R axos.db.tar.gz *.pkg.tar.zst
-sleep 5
+mv axos.db.tar.gz axos.db
+mv axos.file.tar.gz axos.file
+
 
 echo "####################################"
 echo "#	    Repo Updated! Goodbye!	 #"
