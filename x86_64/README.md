@@ -15,3 +15,4 @@
 - [grub-update-2](https://raw.githubusercontent.com/axos-project/axmirrors/main/x86_64/grub-update-2.122b-1-x86_64.pkg.tar.zst)
 - [plymouth-22](https://raw.githubusercontent.com/axos-project/axmirrors/main/x86_64/plymouth-22.02.122-6-x86_64.pkg.tar.zst)
 - [plymouth-theme-axos-2](https://raw.githubusercontent.com/axos-project/axmirrors/main/x86_64/plymouth-theme-axos-2.0-1-any.pkg.tar.zst)
+- [sddm-theme-deepin-git-20](https://raw.githubusercontent.com/axos-project/axmirrors/main/x86_64/sddm-theme-deepin-git-20.0.0-1-any.pkg.tar.zst)
