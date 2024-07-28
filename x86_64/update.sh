@@ -5,8 +5,8 @@ rm axos.file*
 
 echo "repo-add"
 repo-add -n -R axos.db.tar.gz *.pkg.tar.zst
-mv axos.db.tar.gz axos.db
-mv axos.file.tar.gz axos.file
+# mv axos.db.tar.gz axos.db
+# mv axos.file.tar.gz axos.file
 
 
 echo "####################################"
