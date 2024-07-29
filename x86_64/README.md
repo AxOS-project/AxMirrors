@@ -2,7 +2,7 @@
 
 - [about-axos-1](https://raw.githubusercontent.com/axos-project/axmirrors/main/x86_64/about-axos-1.3-1-x86_64.pkg.tar.zst)
 - [axos-backgrounds-2](https://raw.githubusercontent.com/axos-project/axmirrors/main/x86_64/axos-backgrounds-2.2-1-x86_64.pkg.tar.zst)
-- [axos-hooks-3](https://raw.githubusercontent.com/axos-project/axmirrors/main/x86_64/axos-hooks-3.5-1-x86_64.pkg.tar.zst)
+- [axos-hooks-3](https://raw.githubusercontent.com/axos-project/axmirrors/main/x86_64/axos-hooks-3.5-2-x86_64.pkg.tar.zst)
 - [axos-hooks-extra-3](https://raw.githubusercontent.com/axos-project/axmirrors/main/x86_64/axos-hooks-extra-3.1-1-x86_64.pkg.tar.zst)
 - [axskel-2](https://raw.githubusercontent.com/axos-project/axmirrors/main/x86_64/axskel-2.3-3-x86_64.pkg.tar.zst)
 - [bash-5](https://raw.githubusercontent.com/axos-project/axmirrors/main/x86_64/bash-5.2-5-x86_64.pkg.tar.zst)
