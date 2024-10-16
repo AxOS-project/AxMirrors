@@ -32,14 +32,12 @@
 > I need feedbacks! i cannot improve AxOS without it!
 
 
-AxMirrors is a repository for AxOs packages. AxMirrors provides a mirror of packages accessible via a web interface for users wishing to install or update their OS. This mirror is specially designed for x86_64 architectures and structured in a simple way to facilitate package distribution. 
+AxMirrors is a repository for AxOS packages. AxMirrors provides a mirror of packages accessible via a web interface for users wishing to install or update their OS. This mirror is specially designed for x86_64 architectures and structured in a simple way to facilitate package distribution. 
 
 ## Repository structure
 The repository is organized as follows:
 
-- An HTML file for indexing and navigation.
-- A Python file for managing or automating specific tasks.
-- An x86_64/ folder containing all the packages available for this architecture.
+
 ```css
 AxMirrors/
 │
@@ -51,6 +49,3 @@ AxMirrors/
 
 ## Package installation
 There is no specific command for updating packages via AxMirrors. You can simply check the availability of new versions on the mirror and download them manually if necessary.
-
-## About AxOS
-AxOS is a lightweight, scalable operating system designed for optimum performance on x86_64 architectures. Thanks to its flexible package management system, users can easily install and update software from repositories such as AxMirrors.
