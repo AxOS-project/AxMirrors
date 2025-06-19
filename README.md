@@ -40,7 +40,7 @@ AxMirrors/
 │
 ├── index.html
 ├── autogen.py
-├── update_pkgs.sh
+├── add_new_pkgs.sh
 └── x86_64/
     └── [packages...]
 └── new/
