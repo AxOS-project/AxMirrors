@@ -15,7 +15,7 @@ CYAN='\033[1;36m'
 BOLD='\033[1m'
 RESET='\033[0m'
 
-# Check new_dir availabiility 
+# Check new_dir availability 
 if [ ! -d "$NEW_DIR" ]; then
     echo -e "${RED}>> '$NEW_DIR' directory not found${RESET}"
     echo -e "${BLUE}>> working directory:${RESET} ${BOLD}$(pwd)${RESET}"
@@ -46,12 +46,25 @@ shopt -s nullglob
 
 for pkgpath in "$NEW_DIR"/*.pkg.tar.zst; do
     pkgfile=$(basename "$pkgpath")
-    pkgname=$(echo "$pkgfile" | rev | cut -d'-' -f4- | rev)
+    pkgbase="${pkgfile%%-[0-9]*-[0-9]*-*.pkg.tar.zst}"
 
     echo -e "${BLUE}➤ Processing:${RESET} ${pkgfile}"
-    echo -e "   ${CYAN}├─ Package name:${RESET} ${pkgname}"
+    echo -e "   ${CYAN}├─ Package name:${RESET} ${pkgbase}"
 
-    old_versions=("$MIRROR_DIR"/"$pkgname"-*.pkg.tar.zst)
+    # Portable filtering of matching files
+    old_versions=()
+    while IFS= read -r f; do
+        fname=$(basename "$f")
+        fbase="${fname%%-[0-9]*-[0-9]*-*.pkg.tar.zst}"
+        if [[ "$fbase" == "$pkgbase" ]]; then
+            # echo "      matched: $fname"
+            old_versions+=("$f")
+        # else
+        #     echo "skipped: $fname"
+        fi
+    done < <(find "$MIRROR_DIR" -maxdepth 1 -type f -name "$pkgbase-*.pkg.tar.zst")
+
+
     if [[ ${#old_versions[@]} -gt 0 ]]; then
         echo -e "   ${YELLOW}├─ Removing old versions:${RESET}"
         for old in "${old_versions[@]}"; do
