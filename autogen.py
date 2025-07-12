@@ -5,8 +5,6 @@ from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
-archs = (Path("x86_64"),)
-
 base_url = "https://raw.githubusercontent.com/axos-project/axmirrors/main/{arch}/{package}"
 
 # JavaScript for live search filtering
@@ -23,11 +21,7 @@ function searchPackages(inputId, listId) {
 </script>
 """
 
-def main():
-    # root index.html content
-    index_text = "<html><head><title>AxOS Packages</title></head><body>\n"
-    index_text += "<h1>AxOS Packages</h1>\n<ul>\n"
-
+def generate_page(archs, root_path, index_text = "<ul>"):
     for arch in archs:
         # add current arch to root index.html
         logging.info("Generating for arch: %s", arch)
@@ -35,7 +29,7 @@ def main():
 
         # per-arch index.html content
         arch_text = f"""<html><head><title>Packages for {arch}</title>{search_script}</head><body>
-<a href="../index.html">../</a>
+<a href="{root_path}index.html">../</a>
 <h1>Packages for {arch}</h1>
 <input type="text" id="archSearch_{arch}" placeholder="Search..." onkeyup="searchPackages('archSearch_{arch}', 'pkgList_{arch}')">
 <ul id="pkgList_{arch}">
@@ -60,10 +54,29 @@ def main():
 
     index_text += "</ul></body></html>"
 
-    # write root index.html
-    with open("index.html", "w") as f:
+    # write root index.html (appending)
+    with open("index.html", "a") as f:
         f.write(index_text)
 
+def clear_page():
+    with open("index.html", "w") as f:
+        f.write("")
+
+def main():
+    page1 = (Path("x86_64"),)
+    page2 = (Path("testing/x86_64"),)
+
+    clear_page()
+
+    # root index.html content
+    index_text = "<html><head><title>AxOS Packages</title></head><body>\n"
+    index_text += "<h1>AxOS Packages</h1>\n<ul>\n"
+
+    # NOTE To future me, @ardox or any other person reading this code:
+    # The second argument points to the root from the current page
+    # Make sure that you add '/' at the end of the root path to consider it as a directory
+    generate_page(page1, "../", index_text)
+    generate_page(page2, "../../")
 
 if __name__ == "__main__":
     main()
