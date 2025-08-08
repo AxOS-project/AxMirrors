@@ -88,4 +88,8 @@ for pkgpath in "$NEW_DIR"/*.pkg.tar.zst; do
     echo ""
 done
 
+cd x86_64/
+sh update.sh
+cd ..
+
 echo -e "${GREEN}Done.${RESET} Mode: ${BOLD}$MODE${RESET}"
