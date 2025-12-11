@@ -1,0 +1,149 @@
+name: Check GRUB Bootloader Updates
+
+on:
+  schedule:
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  check-grub:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+
+    outputs:
+      grub_updated: ${{ steps.grub_detect.outputs.grub_updated }}
+
+    env:
+      SB_KEY: ${{ secrets.AXOS_SBP_KEY }}
+
+    steps:
+      - uses: actions/cache@v4
+        name: Restore GRUB cache
+        with:
+          path: grub-cache.txt
+          key: grub-cache
+          restore-keys: |
+            grub-cache
+
+      - name: Install dependencies
+        run: |
+          pacman -Sy --noconfirm jq curl git ca-certificates openssl
+          update-ca-trust
+
+      - name: Fetch GRUB package data
+        run: |
+          curl -s --retry 5 --retry-delay 5 https://archlinux.org/packages/core/x86_64/grub/json/ -o grub.json
+
+      - name: Read GRUB version
+        id: grub_version
+        run: |
+          GRUB=$(jq -r '.pkgver + "-" + .pkgrel' grub.json)
+          echo "grub=$GRUB" >> $GITHUB_OUTPUT
+
+      - name: Compare GRUB version
+        id: grub_detect
+        run: |
+          CACHE_FILE="grub-cache.txt"
+          NEW="${{ steps.grub_version.outputs.grub }}"
+
+          echo "=== GRUB VERSION CHECK ==="
+          echo "New version: $NEW"
+
+          if [ ! -f "$CACHE_FILE" ]; then
+            echo "Cache file not found. Creating one."
+            echo "$NEW" > "$CACHE_FILE"
+            echo "grub_updated=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          OLD_GRUB=$(cat "$CACHE_FILE")
+          echo "Old version from cache: $OLD_GRUB"
+
+          if [ "$NEW" != "$OLD_GRUB" ]; then
+            echo "Version changed. Update proceeding."
+            echo "grub_updated=true" >> $GITHUB_OUTPUT
+          else
+            echo "Version unchanged. Skipping."
+            echo "grub_updated=false" >> $GITHUB_OUTPUT
+          fi
+          echo "${{ steps.grub_version.outputs.grub }}" > "$CACHE_FILE"
+
+      - uses: actions/cache/save@v4
+        name: Save GRUB cache
+        with:
+          path: grub-cache.txt
+          key: grub-cache-${{ github.run_id }}
+
+      - name: Write Secure Boot key
+        run: |
+          echo "$SB_KEY" > sb.key
+
+      - name: Clone Secure Boot cert
+        run: |
+          git clone https://github.com/AxOS-project/axos-secureboot-keys.git keys-repo
+          cp keys-repo/db.crt sb.crt
+
+      - name: Download, sign, and package GRUB
+        if: steps.grub_detect.outputs.grub_updated == 'true'
+        run: |
+          mkdir -p /tmp/tmp.grubABC/
+          FILE="grub-${{ steps.grub_version.outputs.grub }}-x86_64.pkg.tar.zst"
+          URL="https://archlinux.org/packages/core/x86_64/grub/download/"
+          curl -fL "$URL" -o "$FILE"
+          mkdir -p extract
+          bsdtar -xf "$FILE" -C extract
+
+          for BIN in $(find extract/usr/lib/grub -type f -name '*.efi'); do
+            sbsign --key sb.key --cert sb.crt --output "$BIN.signed" "$BIN"
+            mv "$BIN.signed" "$BIN"
+          done
+
+          bsdtar -cf "$FILE" -C extract .
+          cp "$FILE" /tmp/tmp.grubABC/
+
+      - name: Upload signed GRUB package
+        if: steps.grub_detect.outputs.grub_updated == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-grub
+          path: /tmp/tmp.grubABC/*.pkg.tar.zst
+
+  push-changes:
+    runs-on: ubuntu-latest
+    needs: check-grub
+    if: needs.check-grub.outputs.grub_updated == 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download signed grub
+        uses: actions/download-artifact@v4
+        with:
+          name: signed-grub
+          path: ${{ github.workspace }}/new
+
+      - name: Add new packages
+        run: |
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE":"$GITHUB_WORKSPACE" \
+            -w "$GITHUB_WORKSPACE" \
+            archlinux:latest \
+            sh -c "pacman -Sy --noconfirm pacman-contrib && ./add_new_pkgs.sh"
+
+      - name: Commit GRUB version update
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add new/*
+          git add testing/* x86_64/* || true
+          if git diff --cached --quiet; then
+            echo "No GRUB updates to commit."
+          else
+            git commit -m "Update GRUB version cache"
+            git push origin HEAD:main
+          fi
