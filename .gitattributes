@@ -1,4 +1,0 @@
-x86_64/hyprland-git-debug-0.47.0.r10.g3d1dd6b5-1-x86_64.pkg.tar.zst filter=lfs diff=lfs merge=lfs -text
-x86_64/hyprland-git-0.47.0.r10.g3d1dd6b5-1-x86_64.pkg.tar.zst filter=lfs diff=lfs merge=lfs -text
-x86_64/hyprland-git-0.47.0.r14.gaaa5573c-1-x86_64.pkg.tar.zst filter=lfs diff=lfs merge=lfs -text
-x86_64/hyprland-git-debug-0.47.0.r14.gaaa5573c-1-x86_64.pkg.tar.zst filter=lfs diff=lfs merge=lfs -text
