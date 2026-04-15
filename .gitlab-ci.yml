@@ -1,0 +1,18 @@
+image: node:lts
+
+cache:
+  paths:
+    - .npm/
+
+pages:
+  stage: deploy
+  script:
+    - npm ci --cache .npm --prefer-offline
+    - npm run build
+    - rm -rf public
+    - mv dist public
+  artifacts:
+    paths:
+      - public
+  only:
+    - main
