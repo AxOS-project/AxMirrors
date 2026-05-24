@@ -9,10 +9,11 @@ pages:
       - public
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
-  trigger_website_build:
-    stage: deploy
-    trigger:
-      project: axos-project/axos-project.gitlab.io
-      branch: main
-    rules:
-      - if: $CI_COMMIT_BRANCH == "main"
+
+trigger_website_build:
+  stage: deploy
+  trigger:
+    project: axos-project/axos-project.gitlab.io
+    branch: main
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
