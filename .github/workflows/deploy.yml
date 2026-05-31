@@ -18,8 +18,8 @@ jobs:
           args: --follow-symlinks --delete
         env:
           AWS_S3_BUCKET: 'axmirrors'
-          AWS_ACCESS_KEY_ID: ${{ secrets::R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets::R2_SECRET_ACCESS_KEY }}
-          AWS_S3_ENDPOINT: ${{ secrets::R2_ENDPOINT }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_S3_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
           AWS_REGION: 'auto'
           SOURCE_DIR: './'
