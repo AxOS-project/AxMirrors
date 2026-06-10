@@ -22,11 +22,9 @@ jobs:
 
       - name: Run update.sh
         run: |
-          chmod +x ./x86_64/update.sh
-          ./x86_64/update.sh
-
-      - name: Run autogen.py
-        run: python3 ./autogen.py
+          cd ./x86_64
+          chmod +x update.sh
+          ./update.sh
 
       - name: Upload Repository Artifact
         uses: actions/upload-artifact@v4
