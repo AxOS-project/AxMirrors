@@ -9,12 +9,29 @@ on:
 jobs:
   update:
     runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install System Dependencies
+        run: |
+          pacman -Sy --noconfirm pacman-contrib binutils python git
+
       - name: Run update.sh
-        run: ./x86_64/update.sh
+        run: |
+          chmod +x ./x86_64/update.sh
+          ./x86_64/update.sh
 
       - name: Run autogen.py
         run: python3 ./autogen.py
+
+      - name: Upload Repository Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: updated-repo
+          path: |
+            ./*
+            !./.git

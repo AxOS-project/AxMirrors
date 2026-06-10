@@ -10,8 +10,12 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
-      - name: Checkout repository code
-        uses: actions/checkout@v4
+      - name: Download Updated Repository
+        uses: actions/download-artifact@v4
+        with:
+          name: updated-repo
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Sync repository to Cloudflare R2
         uses: jakejarvis/s3-sync-action@master
