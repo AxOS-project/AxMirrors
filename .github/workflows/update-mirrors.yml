@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - "x86_64/**"
-    workflow_dispatch:
+  workflow_dispatch:
 
 jobs:
   update:
