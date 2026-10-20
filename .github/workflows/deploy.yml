@@ -20,7 +20,7 @@ jobs:
       - name: Sync repository to Cloudflare R2
         uses: jakejarvis/s3-sync-action@master
         with:
-          args: --follow-symlinks --delete
+          args: --follow-symlinks --delete --exclude "signed/*"
         env:
           AWS_S3_BUCKET: 'axmirrors'
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
