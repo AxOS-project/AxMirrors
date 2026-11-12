@@ -18,7 +18,7 @@ jobs:
 
       - name: Install System Dependencies
         run: |
-          pacman -Sy --noconfirm pacman-contrib binutils python git
+          pacman -Syu --noconfirm pacman-contrib binutils python git
 
       - name: Run update.sh
         run: |
