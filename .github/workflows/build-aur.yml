@@ -1,0 +1,143 @@
+name: Build AUR packages
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    # Run weekly on Sundays at 03:00 UTC to keep AUR packages up to date
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+
+concurrency:
+  group: build-aur-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Parse aurpkg.conf
+        id: parse
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ ! -f aurpkg.conf ]; then
+            echo "aurpkg.conf not found; no AUR packages to build."
+            echo "has_packages=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          mapfile -t PACKAGES < <(
+            tr -d '\r' < aurpkg.conf \
+              | sed 's/#.*//' \
+              | awk '{$1=$1; if (length($0) > 0 && !seen[$0]++) print $0}'
+          )
+
+          if [ "${#PACKAGES[@]}" -eq 0 ]; then
+            echo "No packages listed in aurpkg.conf."
+            echo "has_packages=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "AUR packages to build (${#PACKAGES[@]}):"
+          printf '  - %s\n' "${PACKAGES[@]}"
+          echo "has_packages=true" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Build Environment
+        if: steps.parse.outputs.has_packages == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Enable multilib repository for packages with 32-bit dependencies
+          sed -i '/^#\[multilib\]/,/^#Include/s/^#//' /etc/pacman.conf
+
+          pacman -Syu --noconfirm base-devel git sudo
+
+          # Configure makepkg (remove '!debug' below if you want *-debug packages)
+          {
+            echo ""
+            echo "MAKEFLAGS=\"-j$(nproc)\""
+            echo "PKGEXT='.pkg.tar.zst'"
+            echo "OPTIONS+=(!debug)"
+          } >> /etc/makepkg.conf
+
+          # Create non-root builder user required by makepkg
+          useradd -m -s /bin/bash builder
+          echo "builder ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/builder
+          chmod 0440 /etc/sudoers.d/builder
+
+          # Configure GPG auto key retrieval for PKGBUILDs with validpgpkeys
+          mkdir -p /home/builder/.gnupg
+          printf 'keyserver hkps://keyserver.ubuntu.com\nkeyserver-options auto-key-retrieve\n' > /home/builder/.gnupg/gpg.conf
+          chown -R builder:builder /home/builder/.gnupg
+          chmod 700 /home/builder/.gnupg
+
+          mkdir -p /tmp/yay-build /tmp/aur-build /tmp/aur-pkgs
+          chown -R builder:builder /tmp/yay-build /tmp/aur-build /tmp/aur-pkgs
+
+          # Install yay-bin for AUR dependency resolution (outside PKGDEST)
+          sudo -Hu builder bash -euo pipefail -c '
+            git clone https://aur.archlinux.org/yay-bin.git /tmp/yay-build/yay-bin
+            cd /tmp/yay-build/yay-bin
+            makepkg -si --noconfirm
+          '
+
+      - name: Build AUR Packages
+        if: steps.parse.outputs.has_packages == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mapfile -t PACKAGES < <(
+            tr -d '\r' < aurpkg.conf \
+              | sed 's/#.*//' \
+              | awk '{$1=$1; if (length($0) > 0 && !seen[$0]++) print $0}'
+          )
+
+          sudo -Hu builder env PKGDEST=/tmp/aur-pkgs \
+            yay -S --aur --noconfirm --rebuild \
+              --builddir /tmp/aur-build \
+              --answerdiff None \
+              --answerclean None \
+              --answeredit None \
+              --mflags "--noconfirm" \
+              "${PACKAGES[@]}"
+
+      - name: Stage Built Packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+
+          mkdir -p ./aur-artifacts
+          : > ./aur-artifacts/built-packages.txt
+
+          if [ -d /tmp/aur-pkgs ]; then
+            for pkg in /tmp/aur-pkgs/*.pkg.tar.zst; do
+              cp -- "$pkg" ./aur-artifacts/
+              basename "$pkg" >> ./aur-artifacts/built-packages.txt
+            done
+          fi
+
+          echo "Staged AUR packages:"
+          if [ -s ./aur-artifacts/built-packages.txt ]; then
+            cat ./aur-artifacts/built-packages.txt
+          else
+            echo "  (none)"
+          fi
+
+      - name: Upload AUR Packages Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aur-packages
+          path: ./aur-artifacts
+          retention-days: 30

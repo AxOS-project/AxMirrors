@@ -1,24 +1,128 @@
 name: Update mirrors
 
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows: ["Build AUR packages"]
+    types: [completed]
   workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
 
 jobs:
   update:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     container:
       image: archlinux:latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - name: Install System Dependencies
         run: |
           pacman -Syu --noconfirm pacman-contrib binutils python git
+
+      - name: Find Latest Successful AUR Build
+        id: latest_aur
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          run_id=$(python3 - <<'EOF'
+          import json, os, urllib.request
+          headers = {
+              "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+              "Accept": "application/vnd.github+json",
+          }
+          repo = os.environ["REPO"]
+          url = f"https://api.github.com/repos/{repo}/actions/workflows/build-aur.yml/runs?status=success&per_page=5"
+          try:
+              with urllib.request.urlopen(urllib.request.Request(url, headers=headers)) as resp:
+                  runs = json.load(resp).get("workflow_runs", [])
+              for run in runs:
+                  art_url = f"https://api.github.com/repos/{repo}/actions/runs/{run['id']}/artifacts"
+                  with urllib.request.urlopen(urllib.request.Request(art_url, headers=headers)) as aresp:
+                      artifacts = json.load(aresp).get("artifacts", [])
+                  if any(a.get("name") == "aur-packages" and not a.get("expired") for a in artifacts):
+                      print(run["id"])
+                      break
+          except Exception:
+              pass
+          EOF
+          )
+          echo "run_id=${run_id}" >> "$GITHUB_OUTPUT"
+
+      - name: Download Built AUR Packages (from workflow_run)
+        if: ${{ github.event_name == 'workflow_run' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: aur-packages
+          path: ./aur-artifacts
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download Built AUR Packages (from latest build)
+        if: ${{ github.event_name == 'workflow_dispatch' && steps.latest_aur.outputs.run_id != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: aur-packages
+          path: ./aur-artifacts
+          run-id: ${{ steps.latest_aur.outputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Place AUR Packages in x86_64
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+
+          AUR_DIR="./aur-artifacts"
+          MIRROR_DIR="./x86_64"
+
+          if [ ! -d "$AUR_DIR" ]; then
+            echo "No AUR packages directory found; skipping."
+            exit 0
+          fi
+
+          pkgs=("$AUR_DIR"/*.pkg.tar.zst)
+          if [ "${#pkgs[@]}" -eq 0 ]; then
+            echo "No built AUR packages to add."
+            rm -rf "$AUR_DIR"
+            exit 0
+          fi
+
+          get_pkgname() {
+            bsdtar -xOf "$1" .PKGINFO 2>/dev/null | awk -F' = ' '$1 == "pkgname" {print $2; exit}'
+          }
+
+          for newpkg in "${pkgs[@]}"; do
+            newfile=$(basename "$newpkg")
+            pkgname=$(get_pkgname "$newpkg")
+            if [ -z "$pkgname" ]; then
+              echo "Error: could not read pkgname from $newfile" >&2
+              exit 1
+            fi
+            echo "Adding AUR package: $newfile (pkgname: $pkgname)"
+
+            # Remove older versions of the exact same pkgname from x86_64
+            for existing in "$MIRROR_DIR"/"${pkgname}"-*.pkg.tar.zst; do
+              existing_name=$(get_pkgname "$existing")
+              if [ "$existing_name" = "$pkgname" ]; then
+                echo "  Removing old version: $(basename "$existing")"
+                rm -f -- "$existing"
+              fi
+            done
+
+            cp -- "$newpkg" "$MIRROR_DIR/"
+          done
+
+          rm -rf "$AUR_DIR"
 
       - name: Run update.sh
         run: |
@@ -33,3 +137,4 @@ jobs:
           path: |
             ./*
             !./.git
+            !./aur-artifacts
